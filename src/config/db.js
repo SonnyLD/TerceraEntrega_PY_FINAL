@@ -1,15 +1,13 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-
+import dotenv from 'dotenv';
 dotenv.config();
 
-mongoose.set('strictQuery', false);
-mongoose.connect(process.env.MONGO_URI, (err) => {
- if (err) {
-  console.log("Error", err);
+const db = {
+    PORT: process.env.PORT || 8080,
+    MONGO_URI: process.env.MONGO_URI,
+    SECRET: process.env.SECRET,
+    CLIENT_ID: process.env.CLIENT_ID,
+    CLIENT_SECRET: process.env.CLIENT_SECRET,
+    APP_ID: process.env.APP_ID,
+};
 
- }else{
-   console.log('🚀Connectado a MONGODB')
- } 
-
-})
+export default db;

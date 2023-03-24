@@ -1,4 +1,4 @@
-import * as AuthService from "./auth.service.js";
+/*import * as AuthService from "./auth.service.js";
 import * as UserService from "./user.service.js"
 
 export async function login(email, password) {
@@ -13,4 +13,4 @@ export async function login(email, password) {
   } catch (error) {
     throw new Error(error.message);
   }
-}
+}*/

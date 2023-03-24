@@ -1,76 +1,74 @@
 import express from 'express';
-import productsRouter from './routers/products.router.js';
-import cartsRouter from './routers/carts.router.js'
-import UserRouter from "./routers/user.router.js";
-import AuthRouter from "./routers/auth.router.js";
-import viewsRouter from './routers/views.router.js';
-import passportLocalRouter from'./routers/passportLocal.router.js';
-import githubRouter from './routers/github.routes.js';
-import dotenv from 'dotenv';
-import "./config/db.js";
-if (process.env.MONGO_URI) import("./config/db.js");
-import cookie from "cookie-parser";
-import session from "express-session";
-import mongoStore from "connect-mongo";
-import { engine } from 'express-handlebars';
+import handlebars from 'express-handlebars';
+import { paginationUrl, compare } from './utils/helpers.js';
 import { Server } from 'socket.io';
+import cookie from 'cookie-parser';
+import session from 'express-session';
+import passportConfig from './config/passport.config.js';
 import passport from 'passport';
-import configPassport from './config/passport.config.js';
-import webSocketService from './services/websocket.services.js';
-import JWTRouter from './routers/jwt.router.js'
+import mongoStore from 'connect-mongo';
 
-dotenv.config()
+export default class AppServer {
+    constructor({ db, Router, WebsocketService }) {
+        this.app = express();
+        this.config = db;
+        this.router = Router;
+        this.websocketService = WebsocketService;
+        this.setup();
+    }
 
-const app = express();
+    async setup() {
+        await passportConfig(passport);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('src/public'));
-app.use(cookie());
-app.use(
-  session({
-    store: new mongoStore({
-      mongoUrl: process.env.MONGO_URI,
-      options: {
-        userNewUrlParser: true,
-        useUnifiedTopology: true,
-      },
-    }),
-    secret: process.env.SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 100000 },
-  }),
-);
+        const hbs = handlebars.create({
+            helpers: {
+                paginationUrl,
+                compare,
+            },
+        });
 
-app.engine('handlebars', engine());
-app.set('view engine', 'handlebars');
-app.set('views', 'src/views');
+        // Set static route
+        this.app.use(express.static('src/public'));
 
-configPassport(passport);
-app.use(passport.initialize());
-app.use(passport.session());
+        // Set cookie parser, session and passport
+        this.app.use(cookie());
+        this.app.use(
+            session({
+                store: new mongoStore({
+                    mongoUrl: this.config.MONGO_URI,
+                    options: {
+                        userNewUrlParser: true,
+                        useUnifiedTopology: true,
+                    },
+                }),
+                secret: this.config.SECRET,
+                resave: false,
+                saveUninitialized: false,
+                cookie: { maxAge: 10000000 },
+            })
+        );
 
+        // set passport
+        this.app.use(passport.initialize());
+        this.app.use(passport.session());
 
+        // Set main router
+        this.app.use(this.router);
 
-app.use((req, _res, next) => { //https://aaryanadil.com/pass-socket-io-to-express-routes-in-files/ 
-    req.io = io;
-    next();
-});
-app.use('/api/products',productsRouter);
-app.use('/api/carts',cartsRouter);
-app.use("/api/users", UserRouter);
-app.use("/api/auth", AuthRouter);
-app.use("/", viewsRouter);
-app.use('/api/passport', passportLocalRouter);
-app.use('/api/github', githubRouter)
-app.use("/api/jwt", JWTRouter);
+        // Set template engine
+        this.app.engine('handlebars', hbs.engine);
+        this.app.set('view engine', 'handlebars');
+        this.app.set('views', 'src/views');
+    }
 
+    start() {
+        const server = this.app.listen(this.config.PORT, () => {
+            console.log(`🚀 Server started on port: ${this.config.PORT}`);
+        });
 
-const PORT = process.env.PORT || 8080
-const server = app.listen(PORT, () => { 
-console.log(`🚀 Server started on port http://localhost:${PORT}`)});
-server.on('error', (err) => console.log(err));
+        server.on('error', (err) => console.log(err));
 
-const io = new Server(server);
-webSocketService.websocketInit(io);
+        const io = new Server(server);
+        this.websocketService.websocketInit(io);
+    }
+}

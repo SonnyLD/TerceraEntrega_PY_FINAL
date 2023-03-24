@@ -1,7 +1,7 @@
-import passport from '../utils/passport.utils.js'
+//import passport from '../utils/passport.utils.js'
 
 
-export const passportCall = strategy => {
+/*export const passportCall = strategy => {
   return async (req, res, next) => {
     passport.authenticate(strategy,function(err,user,info) {
       if (err) return next(err)
@@ -10,4 +10,4 @@ export const passportCall = strategy => {
       next()
     })(req,res,next)
   }
-}
+}*/
